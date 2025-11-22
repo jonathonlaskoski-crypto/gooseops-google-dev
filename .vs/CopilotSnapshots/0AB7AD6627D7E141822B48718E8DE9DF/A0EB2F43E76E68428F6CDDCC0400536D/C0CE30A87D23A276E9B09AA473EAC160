@@ -1,0 +1,1702 @@
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
+import { useKV } from '@/hooks/useKV'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { JobMap } from '@/components/JobMap'
+import { MobileJobMap } from '@/components/MobileJobMap'
+import { MobileLayout } from '@/components/MobileLayout'
+import { MLDashboard } from '@/components/MLDashboard'
+import { SuperAres } from '@/components/SuperAres'
+import { ARESCommunication } from '@/components/ARESCommunication'
+import { PowerPlatformDashboard } from '@/components/PowerPlatformDashboard'
+import { SecurityDashboard } from '@/components/SecurityDashboard'
+import { DirectorStrategicDashboard } from '@/components/DirectorStrategicDashboard'
+import { AIOrchestrationDashboard } from '@/components/AIOrchestrationDashboard'
+import { DataIntelligenceDashboard } from '@/components/DataIntelligenceDashboard'
+import { DocumentDashboard } from '@/components/DocumentDashboard'
+import { TeamReportingDashboard } from '@/components/TeamReportingDashboard'
+import { MissionIntelligenceHub } from '@/components/MissionIntelligenceHub'
+import { ARESConfigurationDashboard } from '@/components/ARESConfigurationDashboard'
+import { AITeamDashboard } from '@/components/AITeamDashboard'
+import { OfflineStatus } from '@/components/ui/offline-status'
+import { useDevice } from '@/hooks/use-mobile'
+
+// System Integration Imports
+import { systemIntegration } from '@/lib/systemIntegration'
+import { aiSystemAccess } from '@/lib/aiSystemAccess'
+
+import {
+  MapPin,
+  Camera,
+  CheckCircle,
+  Clock,
+  Warning,
+  NavigationArrow,
+  UserCircle,
+  SignIn,
+  ChatCircle,
+  FileText,
+  Calendar,
+  Phone,
+  X,
+  Lightning,
+  FlipHorizontal,
+  Robot,
+  Eye,
+  PaperPlaneTilt,
+  Scan,
+  Brain,
+  GearSix,
+  Shield,
+  House,
+  List
+} from '@phosphor-icons/react'
+import { toast } from 'sonner'
+import { AgentStatusPanel } from '@/components/AgentStatusPanel'
+
+import { type Job, type TechProfile, optimizeRoute, calculateJobPriority } from '@/lib/optimization'
+import { LLMCapability, llmClient } from '@/lib/llmClient'
+import { supabase } from '@/lib/supabaseClient'
+import { useOnlineStatus, BackgroundSync } from '@/lib/offlineSync'
+
+async function compressImage(file: string, quality: number = 0.6): Promise<string> {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  const img = new Image()
+
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve()
+    img.onerror = () => reject(new Error('Image failed to load'))
+    img.src = file
+  })
+
+  const maxWidth = 800
+  const scale = Math.min(1, maxWidth / Math.max(img.width, img.height))
+  const width = Math.max(1, Math.round(img.width * scale))
+  const height = Math.max(1, Math.round(img.height * scale))
+
+  canvas.width = width
+  canvas.height = height
+  ctx?.drawImage(img, 0, 0, width, height)
+
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+interface Task {
+  id: string
+  title: string
+  description: string
+  required: boolean
+  completed: boolean
+  photo?: string
+  notes?: string
+  timestamp?: string
+}
+
+interface CheckIn {
+  jobId: string
+  timestamp: string
+  photo: string
+  location: {
+    lat: number
+    lng: number
+  }
+  userId?: string
+  userName?: string
+}
+
+interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+  photo?: string
+}
+
+type UserRole = 'field-tech' | 'manager' | 'director' | 'admin'
+
+interface AppUser {
+  name: string
+  id: string
+  email: string
+  role: UserRole
+  // Legacy flag - will be removed
+  businessAccount?: boolean
+}
+
+interface CopilotState {
+  isAvailable: boolean
+  provider: 'spark' | 'copilot' | 'claude' | 'azure-openai' | 'unknown'
+}
+
+function App() {
+  // Add system integration state
+  const [appMode, setAppMode] = useKV<'tech' | 'showcase'>('app-mode', 'tech')
+  const [systemReady, setSystemReady] = useState(false)
+  const [isPersonalBuild] = useState(true) // Set to true for Jon's personal APK
+
+  const [currentUser, setCurrentUser] = useKV<AppUser | null>('current-user', null)
+  const [selectedJob, setSelectedJob] = useKV<Job | null>('selected-job', null)
+  const [checkedIn, setCheckedIn] = useKV<boolean>('checked-in', false)
+  const [checkInData, setCheckInData] = useKV<CheckIn | null>('check-in-data', null)
+  const [tasks, setTasks] = useKV<Task[]>('job-tasks', [])
+  const [activeTab, setActiveTab] = useState('map')
+  const { isOnline, syncStatus } = useOnlineStatus()
+  const [chatMessages, setChatMessages] = useKV<ChatMessage[]>('copilot-chat', [])
+
+  // Mobile detection
+  const { isMobile, deviceType } = useDevice()
+  const [chatInput, setChatInput] = useState('')
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [offlineJobQueue, setOfflineJobQueue] = useKV<Job[]>('offline-job-queue', [])
+  const [availableJobs, setAvailableJobs] = useState<Job[]>([])
+  const [copilotState, setCopilotState] = useState<CopilotState>({ isAvailable: false, provider: 'unknown' })
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false)
+  const [jobsError, setJobsError] = useState<string>('')
+
+  // Initialize system integration on app load
+  useEffect(() => {
+    const initializeSystemIntegration = async () => {
+      if (!isPersonalBuild) {
+        setSystemReady(true)
+        return
+      }
+      
+      try {
+        console.log('🚀 Initializing GooseOps Powerhouse System Integration...')
+        
+        // Request all system permissions
+        const capabilities = await systemIntegration.requestAllPermissions()
+        console.log('✅ System capabilities:', capabilities)
+        
+        // Check if on Fold device
+        const deviceInfo = await systemIntegration.getDeviceInfo()
+        console.log('📱 Device Info:', deviceInfo)
+        
+        if (deviceInfo.model?.includes('Fold') || deviceInfo.isFoldable) {
+          const foldState = await systemIntegration.getFoldState()
+          if (foldState === 'open') {
+            await systemIntegration.enableDualScreenMode()
+          }
+          await systemIntegration.configureFoldOptimizations()
+          toast.success('📱 Samsung Fold 7 detected - Full integration active!')
+        }
+        
+        // Make AI system access available globally for debugging
+        (window as any).aiSystemAccess = aiSystemAccess
+        (window as any).systemIntegration = systemIntegration
+        
+        setSystemReady(true)
+        toast.success('🚀 GooseOps Powerhouse System Ready!')
+        
+        // Create welcome notification
+        await aiSystemAccess.createAINotification(
+          'GooseOps',
+          'System integration complete. All AI agents online with full phone access.',
+          2000
+        )
+        
+        // Generate initial system report
+        setTimeout(async () => {
+          const report = await aiSystemAccess.generateSystemReport()
+          console.log('📊 System Report Generated:', report)
+        }, 5000)
+        
+      } catch (error) {
+        console.error('❌ System integration error:', error)
+        toast.error('Some system features may not work properly')
+        setSystemReady(true) // Continue anyway
+      }
+    }
+    
+    void initializeSystemIntegration()
+  }, [isPersonalBuild])
+
+  const techProfile: TechProfile = {
+    skills: ['HVAC', 'Electrical', 'Plumbing', 'Smart Home'],
+    efficiency: 1.2,
+    experience: 5,
+    currentLocation: userLocation || { lat: 40.7128, lng: -74.0060 },
+    workingHours: { start: 8, end: 18 },
+    preferredJobTypes: ['maintenance', 'repair']
+  }
+
+  const loadJobsFromSupabase = useCallback(async () => {
+    setIsLoadingJobs(true)
+    setJobsError('')
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(
+          `id, title, description, priority, estimated_duration, customer_info, location_lat, location_lng, skills_required`
+        )
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      const jobs: Job[] = (data || []).map((job) => ({
+        id: job.id,
+        title: job.title,
+        description: job.description,
+        priority: job.priority as Job['priority'],
+        estimatedHours: job.estimated_duration ?? 1,
+        skillsRequired: job.skills_required ?? [],
+        address: job.customer_info?.address ?? 'Not Provided',
+        lat: job.location_lat ?? userLocation?.lat ?? 40.7128,
+        lng: job.location_lng ?? userLocation?.lng ?? -74.006,
+      }))
+
+      setAvailableJobs(jobs)
+    } catch (error) {
+      console.error('Failed to load jobs from Supabase', error)
+      setJobsError('Unable to load jobs from Supabase. Working with local mocks.')
+      setAvailableJobs([])
+    } finally {
+      setIsLoadingJobs(false)
+    }
+  }, [userLocation])
+
+  useEffect(() => {
+    const initializeCopilot = async () => {
+      const available = await llmClient.assertCapability(LLMCapability.FieldAssistant)
+      setCopilotState({ isAvailable: available, provider: available ? 'unknown' : 'unknown' })
+    }
+    void initializeCopilot()
+  }, [])
+
+  useEffect(() => {
+    void loadJobsFromSupabase()
+  }, [loadJobsFromSupabase])
+
+  // Mock jobs data (fallback)
+  const fallbackJobs: Job[] = [
+    {
+      id: '1',
+      title: 'HVAC System Maintenance',
+      address: '123 Business Plaza, Suite 400',
+      lat: 40.7128,
+      lng: -74.0060,
+      priority: 'high',
+      estimatedHours: 4,
+      skillsRequired: ['HVAC', 'Electrical'],
+      description: 'Routine maintenance and filter replacement for commercial HVAC system'
+    },
+    {
+      id: '2',
+      title: 'Network Equipment Installation',
+      address: '456 Tech Center Dr',
+      lat: 40.7589,
+      lng: -73.9851,
+      priority: 'medium',
+      estimatedHours: 2,
+      skillsRequired: ['Networking', 'Cabling'],
+      description: 'Install and configure new router and switch equipment'
+    },
+    {
+      id: '3',
+      title: 'Security Camera Repair',
+      address: '789 Retail Square',
+      lat: 40.7282,
+      lng: -74.0776,
+      priority: 'low',
+      estimatedHours: 1.5,
+      skillsRequired: ['Security Systems'],
+      description: 'Replace faulty camera and test recording functionality'
+    }
+  ]
+  const jobsToDisplay = availableJobs.length > 0 ? availableJobs : fallbackJobs
+
+  // Enhanced offline job prioritization
+  useEffect(() => {
+    if (!isOnline && jobsToDisplay.length > 0 && userLocation) {
+      const prioritizedJobs = [...jobsToDisplay]
+        .map((job) => ({
+          ...job,
+          priorityScore: calculateJobPriority(job, techProfile),
+        }))
+        .sort((a, b) => b.priorityScore - a.priorityScore)
+        .slice(0, 10)
+
+      setOfflineJobQueue(prioritizedJobs)
+      toast.info(`${prioritizedJobs.length} high-priority jobs cached for offline`)
+    }
+  }, [isOnline, userLocation, jobsToDisplay, techProfile, setOfflineJobQueue])
+
+  const handleLogin = () => {
+    // TODO: Replace with real authentication
+    // For now, defaulting to director role for testing
+    setCurrentUser({
+      name: 'Director User',
+      id: '1',
+      email: 'director@company.com',
+      role: 'director',
+      businessAccount: true
+    })
+    toast.success('Logged in successfully')
+  }
+
+  // Helper function to check if user has access to advanced features
+  const hasAdvancedAccess = (user: AppUser | null): boolean => {
+    if (!user) return false
+    return user.role === 'director' || user.role === 'manager' || user.role === 'admin'
+  }
+
+  // Helper to check if user is field tech only
+  const isFieldTechOnly = (user: AppUser | null): boolean => {
+    if (!user) return false
+    return user.role === 'field-tech'
+  }
+
+  const handleSelectJob = useCallback(
+    (job: Job) => {
+      setSelectedJob(job)
+      // Generate default task list for the job
+      const defaultTasks: Task[] = [
+        { id: '1', title: 'Site Safety Inspection', description: 'Check for hazards and safety compliance', required: true, completed: false },
+        { id: '2', title: 'Equipment Assessment', description: 'Document current equipment condition', required: true, completed: false },
+        { id: '3', title: 'Tool Inventory Check', description: 'Verify all required tools are available', required: true, completed: false },
+        { id: '4', title: 'Customer Contact', description: 'Introduce yourself and explain work scope', required: false, completed: false },
+        { id: '5', title: 'Work Area Preparation', description: 'Set up work area and protective measures', required: true, completed: false }
+      ]
+      setTasks(defaultTasks)
+      setActiveTab('job-details')
+      toast.success(`Job "${job.title}" selected`)
+    },
+    [setSelectedJob, setTasks]
+  )
+
+  const handleNavigation = () => {
+    if (selectedJob) {
+      // In a real app, this would use the device's map application
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${selectedJob.lat},${selectedJob.lng}`
+      window.open(mapsUrl, '_blank')
+      toast.success('Opening navigation...')
+    }
+  }
+
+  const handleCheckIn = async () => {
+    if (!selectedJob) return
+
+    try {
+      // Request camera permission and capture photo
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+
+      // Create video element to capture frame
+      const video = document.createElement('video')
+      video.srcObject = stream
+      video.play()
+
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve
+      })
+
+      // Create canvas to capture frame
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      ctx?.drawImage(video, 0, 0)
+
+      // Convert to base64
+      const photo = canvas.toDataURL('image/jpeg', 0.8)
+
+      // Stop camera stream
+      stream.getTracks().forEach(track => track.stop())
+
+      const location = { lat: selectedJob.lat, lng: selectedJob.lng }
+
+      const checkIn: CheckIn = {
+        jobId: selectedJob.id,
+        timestamp: new Date().toISOString(),
+        photo,
+        location,
+        userId: currentUser?.id || '',
+        userName: currentUser?.name || ''
+      }
+
+      // Save locally first
+      setCheckInData(checkIn)
+      setCheckedIn(true)
+      setActiveTab('tasks')
+
+      // Then sync in background
+      BackgroundSync.syncCheckIn(checkIn)
+        .then(() => {
+          if (isOnline) {
+            toast.success('Checked in successfully with photo!')
+          } else {
+            toast.success('Checked in offline. Will sync when back online.')
+          }
+        })
+        .catch(error => {
+          console.error('Check-in sync error:', error)
+          toast.warning('Check-in saved locally. Will try to sync later.')
+        })
+    } catch (error) {
+      console.error('Camera error:', error)
+      toast.error('Camera access failed. Using manual check-in.')
+
+      // Fallback without photo
+      const checkIn: CheckIn = {
+        jobId: selectedJob.id,
+        timestamp: new Date().toISOString(),
+        photo: '',
+        location: { lat: selectedJob.lat, lng: selectedJob.lng },
+        userId: currentUser?.id || '',
+        userName: currentUser?.name || ''
+      }
+
+      setCheckInData(checkIn)
+      setCheckedIn(true)
+      setActiveTab('tasks')
+
+      // Then sync in background
+      BackgroundSync.syncCheckIn(checkIn)
+        .then(() => {
+          if (isOnline) {
+            toast.success('Checked in successfully!')
+          } else {
+            toast.success('Checked in offline. Will sync when back online.')
+          }
+        })
+    }
+  }
+
+  const handleTaskComplete = async (taskId: string, photo?: string, notes?: string) => {
+    const timestamp = new Date().toISOString();
+
+    // Update local state first for immediate feedback
+    setTasks(currentTasks =>
+      (currentTasks || []).map(task =>
+        task.id === taskId
+          ? { ...task, completed: true, photo, notes, timestamp }
+          : task
+      )
+    )
+
+    // Get the updated task
+    const updatedTask = (tasks || []).find(task => task.id === taskId);
+    if (!updatedTask) return;
+
+    const completedTask = {
+      ...updatedTask,
+      completed: true,
+      photo,
+      notes,
+      timestamp,
+      userId: currentUser?.id || '',
+      userName: currentUser?.name || ''
+    };
+
+    // Sync in background
+    if (selectedJob) {
+      BackgroundSync.syncTaskCompletion(completedTask, selectedJob.id)
+        .then(() => {
+          if (isOnline) {
+            toast.success('Task completion synced!');
+          }
+        })
+        .catch(error => {
+          console.error('Task completion sync error:', error);
+          // Task is still marked complete locally, just not synced yet
+          toast.info('Task completion saved locally. Will sync later.');
+        });
+    } else {
+      toast.success('Task marked complete locally!');
+    }
+  }
+
+  const handleJobComplete = async () => {
+    const incompleteTasks = (tasks || []).filter(task => !task.completed)
+    const completedTasksCount = (tasks || []).filter(task => task.completed).length
+
+    if (incompleteTasks.length > 0) {
+      toast.warning(`${incompleteTasks.length} tasks remaining`)
+      return
+    }
+
+    // Mock Slack message
+    const message = `Job completed: ${selectedJob?.title}
+Location: ${selectedJob?.address}
+Tasks completed: ${completedTasksCount}/${(tasks || []).length}
+Check-in: ${checkInData?.timestamp}
+Duration: ${Math.round((Date.now() - new Date(checkInData?.timestamp || '').getTime()) / 60000)} minutes`
+
+    toast.success('Job completion message sent to manager!')
+
+    // Reset for next job
+    setCheckedIn(false)
+    setSelectedJob(null)
+    setCheckInData(null)
+    setTasks([])
+    setActiveTab('map')
+  }
+
+  const handleEarlyDeparture = async () => {
+    const incompleteTasks = (tasks || []).filter(task => !task.completed)
+    const completedTasksCount = (tasks || []).filter(task => task.completed).length
+
+    const message = `Early departure request: ${selectedJob?.title}
+Location: ${selectedJob?.address}
+Tasks completed: ${completedTasksCount}/${(tasks || []).length}
+Incomplete tasks: ${incompleteTasks.map(t => t.title).join(', ')}
+Reason: [Manager approval required]`
+
+    toast.success('Early departure request sent to manager!')
+  }
+
+  const getAICopilotSuggestion = async (task: Task) => {
+    // Mock AI suggestions
+    const suggestions: Record<string, string> = {
+      'Site Safety Inspection': 'Check for proper PPE availability, inspect walkways for hazards, and verify emergency exit accessibility.',
+      'Equipment Assessment': 'Document model numbers, check for visible damage, test basic functionality, and note maintenance stickers.',
+      'Tool Inventory Check': 'Verify specialized tools for this job type, check battery levels on wireless tools, ensure safety equipment is present.'
+    }
+
+    const suggestion = suggestions[task.title] || 'Complete this task according to standard procedures and document with photo or detailed notes.'
+
+    toast.info(`AI Copilot: ${suggestion}`)
+  }
+
+  const handleCopilotVision = async (photo: string) => {
+    try {
+      const promptText = `Analyze this field service photo and provide equipment identification and next steps guidance. Look for:
+1. Equipment model numbers and types
+2. Visible issues or maintenance needs  
+3. Safety considerations
+4. Next recommended actions
+5. Tools that may be needed
+
+Photo context: Field technician working on job site equipment.`
+
+      const { provider, output } = await llmClient.generate({
+        capability: LLMCapability.FieldVision,
+        prompt: promptText,
+        imageBase64: photo,
+        context: {
+          jobTitle: selectedJob?.title,
+          jobAddress: selectedJob?.address,
+        },
+      })
+
+      if (!output) {
+        throw new Error('No analysis returned from AI service')
+      }
+
+      setCopilotState({ isAvailable: true, provider })
+
+      const message: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `🔍 **Vision Analysis (${provider})**:\n\n${output}`,
+        timestamp: new Date().toISOString(),
+      }
+
+      setChatMessages((currentMessages) => [...(currentMessages || []), message])
+      setActiveTab('copilot')
+      toast.success('Copilot vision analysis ready!')
+    } catch (error) {
+      toast.error('Vision analysis failed')
+      console.error('Copilot vision error:', error)
+    }
+  }
+
+  const handleCopilotChat = async () => {
+    if (!chatInput.trim()) return
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: chatInput,
+      timestamp: new Date().toISOString(),
+    }
+
+    setChatMessages((currentMessages) => [...(currentMessages || []), userMessage])
+    setChatInput('')
+
+    try {
+      const context = selectedJob
+        ? `Current job: ${selectedJob.title} at ${selectedJob.address}. Skills required: ${selectedJob.skillsRequired.join(', ')}.`
+        : ''
+      const taskContext = tasks?.length
+        ? `Current tasks: ${tasks
+          .map((t) => `${t.title} (${t.completed ? 'completed' : 'pending'})`)
+          .join(', ')}.`
+        : ''
+
+      const promptText = `You are a field service AI copilot helping a technician. Provide practical, specific guidance for equipment work, troubleshooting, safety, and procedures.
+
+Context:
+${context}
+${taskContext}
+
+User question: ${userMessage.content}
+
+Provide concise, actionable advice focused on field service work.`
+
+      const { provider, output } = await llmClient.generate({
+        capability: LLMCapability.FieldAssistant,
+        prompt: promptText,
+        context: {
+          jobId: selectedJob?.id,
+          activeTasks: tasks?.length,
+        },
+      })
+
+      if (!output) {
+        throw new Error('No response from AI service')
+      }
+
+      setCopilotState({ isAvailable: true, provider })
+
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: output,
+        timestamp: new Date().toISOString(),
+      }
+
+      setChatMessages((currentMessages) => [...(currentMessages || []), assistantMessage])
+    } catch (error) {
+      toast.error('Copilot chat failed')
+      console.error('Chat error:', error)
+    }
+  }
+
+  // Moved outside component
+  // const compressImageForTask = async (file: string, quality: number = 0.6): Promise<string> =>
+  //   compressImage(file, quality)
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center gap-2 justify-center">
+              <UserCircle weight="bold" />
+              Field Tech Login
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input placeholder="Employee ID" />
+            <Input type="password" placeholder="Password" />
+            <Button onClick={handleLogin} className="w-full">
+              <SignIn className="mr-2" />
+              Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const completedTasksCount = (tasks || []).filter(task => task.completed).length
+  const progressPercentage = (tasks || []).length > 0 ? (completedTasksCount / (tasks || []).length) * 100 : 0
+
+  // Available tabs for mobile layout - ROLE-BASED ACCESS
+  const allPossibleTabs = [
+    {
+      id: 'map',
+      label: 'Jobs',
+      icon: <MapPin size={20} />,
+      disabled: false,
+      requiredRole: null // Available to all
+    },
+    {
+      id: 'job-details',
+      label: 'Details',
+      icon: <FileText size={20} />,
+      disabled: !selectedJob,
+      requiredRole: null // Available to all
+    },
+    {
+      id: 'tasks',
+      label: 'Tasks',
+      icon: <CheckCircle size={20} />,
+      disabled: !checkedIn,
+      requiredRole: null // Available to all
+    },
+    {
+      id: 'communication',
+      label: 'Messages',
+      icon: <ChatCircle size={20} />,
+      disabled: false,
+      requiredRole: null // Available to all
+    },
+    {
+      id: 'ares-chat',
+      label: 'ARES',
+      icon: <Lightning size={20} />,
+      disabled: false,
+      requiredRole: 'manager' as UserRole // HIDDEN from field techs
+    },
+    {
+      id: 'ares-comm',
+      label: 'Settings',
+      icon: <GearSix size={20} />,
+      disabled: false,
+      requiredRole: 'manager' as UserRole // HIDDEN from field techs
+    },
+    {
+      id: 'copilot',
+      label: 'Copilot',
+      icon: <Robot size={20} />,
+      disabled: !copilotState.isAvailable,
+      requiredRole: 'manager' as UserRole // HIDDEN from field techs
+    },
+    {
+      id: 'ml-insights',
+      label: 'ML',
+      icon: <Brain size={20} />,
+      disabled: false,
+      requiredRole: 'director' as UserRole // HIDDEN from field techs and managers
+    },
+    {
+      id: 'power-platform',
+      label: 'Power',
+      icon: <GearSix size={20} />,
+      disabled: false,
+      requiredRole: 'director' as UserRole // HIDDEN from field techs and managers
+    },
+    {
+      id: 'security',
+      label: 'Security',
+      icon: <Shield size={20} />,
+      disabled: false,
+      requiredRole: 'director' as UserRole // HIDDEN from field techs and managers
+    }
+  ];
+
+  // Filter tabs based on user role - field techs ONLY see basic tabs
+  const availableTabs = allPossibleTabs.filter(tab => {
+    if (!tab.requiredRole) return true; // No restriction
+    if (!currentUser) return false;
+
+    // Check if user has required role
+    const roleHierarchy: Record<UserRole, number> = {
+      'field-tech': 0,
+      'manager': 1,
+      'director': 2,
+      'admin': 3
+    };
+
+    const requiredLevel = roleHierarchy[tab.requiredRole];
+    const userLevel = roleHierarchy[currentUser.role];
+
+    return userLevel >= requiredLevel;
+  });
+
+  // Mobile layout header for task status
+  const mobileHeader = checkedIn && selectedJob ? (
+    <div className="flex items-center justify-between">
+      <div>
+        <h3 className="text-sm font-medium">{selectedJob.title}</h3>
+        <p className="text-xs text-muted-foreground">{completedTasksCount} of {(tasks || []).length} tasks completed</p>
+      </div>
+      <Progress value={progressPercentage} className="w-24" />
+    </div>
+  ) : null;
+
+  // Render GooseOps Lite (Field Tech edition) - STRICT: Only basic features, no director access
+  if (isMobile || isFieldTechOnly(currentUser)) {
+    return (
+      <MobileLayout
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userName={currentUser?.name}
+        availableTabs={availableTabs}
+        header={mobileHeader}
+        onLogout={() => setCurrentUser(null)}
+      >
+        {/* Job Map Tab - Mobile */}
+        {activeTab === 'map' && (
+          <MobileJobMap
+            jobs={jobsToDisplay}
+            userLocation={userLocation}
+            onJobSelect={handleSelectJob}
+            selectedJob={selectedJob}
+          />
+        )}
+
+        {/* Simplified job details for technicians */}
+        {activeTab === 'job-details' && selectedJob && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{selectedJob.title}</CardTitle>
+                <Badge variant={
+                  selectedJob.priority === 'high' ? "destructive" :
+                    selectedJob.priority === 'medium' ? "default" :
+                      "secondary"
+                } className="mt-1">
+                  {selectedJob.priority === 'high' ? 'Urgent' :
+                    selectedJob.priority === 'medium' ? 'Standard' :
+                      'Routine'}
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">Location</h3>
+                    <p>{selectedJob.address}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">Time Needed</h3>
+                    <p>{selectedJob.estimatedHours} hours</p>
+                  </div>
+
+                  {selectedJob.description && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Job Details</h3>
+                      <p className="text-sm">{selectedJob.description}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={handleNavigation}
+                size="lg"
+                variant="default"
+                className="h-14"
+              >
+                <MapPin className="mr-2" size={20} />
+                Navigate
+              </Button>
+              {checkedIn ? (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="h-14"
+                >
+                  <CheckCircle className="mr-2" size={20} />
+                  Checked In
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleCheckIn}
+                  size="lg"
+                  className="h-14"
+                >
+                  <Camera className="mr-2" size={20} />
+                  Check In
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Other mobile tabs */}
+        {/* {activeTab === 'tasks' && renderTasksTab()} */}
+        {/* {activeTab === 'communication' && renderCommunicationTab()} */}
+        {activeTab === 'ares-chat' && currentUser?.businessAccount && <SuperAres />}
+        {activeTab === 'ares-comm' && currentUser?.businessAccount && <ARESCommunication isOfficeMode={false} />}
+        {activeTab === 'ml-insights' && currentUser?.businessAccount && (
+          <MLDashboard
+            jobs={jobsToDisplay}
+            techProfiles={[techProfile]}
+            isVisible={activeTab === 'ml-insights'}
+          />
+        )}
+        {activeTab === 'power-platform' && currentUser?.businessAccount && <PowerPlatformDashboard />}
+        {activeTab === 'security' && currentUser?.businessAccount && <SecurityDashboard />}
+
+        {/* Copilot tab */}
+        {activeTab === 'copilot' && currentUser?.businessAccount && (
+          <div className="space-y-4">
+            <ScrollArea className="h-[350px] rounded-md border p-4">
+              <div className="space-y-4 pr-4">
+                {chatMessages.map((message, index) => (
+                  <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-lg px-3 py-2 ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}>
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <div className="flex gap-2">
+              <Input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                placeholder="Ask Copilot..."
+                className="flex-1"
+              />
+              <Button onClick={handleCopilotChat}>
+                <PaperPlaneTilt size={16} />
+              </Button>
+              <Button variant="outline" onClick={() => {
+                // TODO: Implement photo capture for vision analysis
+                toast.info('Copilot Vision: Take a photo to analyze');
+              }}>
+                <Camera size={16} />
+              </Button>
+            </div>
+          </div>
+        )}
+      </MobileLayout>
+    );
+  }
+
+  // GooseOps Neural Empire (full-featured version for directors and office staff)
+  // All the bells and whistles!
+  return (
+    <div className="min-h-screen bg-background" data-theme="contrast">
+      {/* Status Bar */}
+      <div className="bg-card border-b p-2 flex items-center justify-between">
+        <div className="flex items-center">
+          <OfflineStatus className="mr-4" />
+          <div className="flex items-center">
+            <House size={18} className="mr-2" />
+            <span className="font-semibold">GooseOps Neural Empire</span>
+            <Badge variant="outline" className="ml-2 text-xs">Director Edition</Badge>
+            <Badge variant="default" className="ml-2 text-xs bg-gradient-to-r from-purple-500 to-blue-500">Advanced Analytics</Badge>
+          </div>
+        </div>
+        <span className="text-sm text-muted-foreground">
+          Welcome, {currentUser.name}
+        </span>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <TabsList className="grid w-full grid-cols-18">
+          <TabsTrigger value="strategy">Strategy</TabsTrigger>
+          <TabsTrigger value="map">Jobs</TabsTrigger>
+          <TabsTrigger value="job-details" disabled={!selectedJob}>Details</TabsTrigger>
+          <TabsTrigger value="tasks" disabled={!checkedIn}>Tasks</TabsTrigger>
+          <TabsTrigger value="communication">Messages</TabsTrigger>
+          <TabsTrigger value="ares-chat" disabled={!hasAdvancedAccess(currentUser)}>
+            <Lightning className="mr-1" size={16} />
+            ARES
+          </TabsTrigger>
+          <TabsTrigger value="ares-comm" disabled={!hasAdvancedAccess(currentUser)}>
+            <GearSix className="mr-1" size={16} />
+            ARES Comm
+          </TabsTrigger>
+          <TabsTrigger value="ares-config" disabled={!hasAdvancedAccess(currentUser)}>
+            <GearSix className="mr-1" size={16} />
+            ARES Config
+          </TabsTrigger>
+          <TabsTrigger value="copilot" disabled={!hasAdvancedAccess(currentUser) || !copilotState.isAvailable}>
+            <Robot className="mr-1" size={16} />
+            Copilot
+          </TabsTrigger>
+          <TabsTrigger value="ai-orchestration" disabled={!hasAdvancedAccess(currentUser)}>
+            <Robot className="mr-1" size={16} />
+            AI Orchestration
+          </TabsTrigger>
+          <TabsTrigger value="data-intelligence" disabled={!hasAdvancedAccess(currentUser)}>
+            <Brain className="mr-1" size={16} />
+            Data Intel
+          </TabsTrigger>
+          <TabsTrigger value="ml-insights" disabled={!hasAdvancedAccess(currentUser)}>
+            <Brain className="mr-1" size={16} />
+            ML Insights
+          </TabsTrigger>
+          <TabsTrigger value="documents" disabled={!hasAdvancedAccess(currentUser)}>
+            <FileText className="mr-1" size={16} />
+            Documents
+          </TabsTrigger>
+          <TabsTrigger value="team-reports" disabled={!hasAdvancedAccess(currentUser)}>
+            <List className="mr-1" size={16} />
+            Team Reports
+          </TabsTrigger>
+          <TabsTrigger value="mission-intel" disabled={!hasAdvancedAccess(currentUser)}>
+            <Eye className="mr-1" size={16} />
+            Mission Intel
+          </TabsTrigger>
+          <TabsTrigger value="power-platform" disabled={!hasAdvancedAccess(currentUser)}>
+            <GearSix className="mr-1" size={16} />
+            Power Platform
+          </TabsTrigger>
+          <TabsTrigger value="security" disabled={!hasAdvancedAccess(currentUser)}>
+            <Shield className="mr-1" size={16} />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="ai-team" disabled={!hasAdvancedAccess(currentUser)}>
+            <Brain className="mr-1" size={16} />
+            AI Team
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Strategy Dashboard Tab */}
+        <TabsContent value="strategy" className="p-0">
+          <DirectorStrategicDashboard isOfficeMode={true} />
+        </TabsContent>
+
+        {/* Job Map Tab */}
+        <TabsContent value="map" className="p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Available Jobs</h2>
+              <div className="flex items-center gap-2">
+                <Badge>
+                  {!isOnline && (offlineJobQueue || []).length > 0 ? (offlineJobQueue || []).length : jobsToDisplay.length} available
+                </Badge>
+                {!isOnline && (offlineJobQueue || []).length > 0 && (
+                  <Badge variant="secondary">Offline Priority Queue</Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Show offline priority message */}
+            {!isOnline && (offlineJobQueue || []).length > 0 && (
+              <Alert>
+                <Warning className="h-4 w-4" />
+                <AlertDescription>
+                  Operating in offline mode. Showing {(offlineJobQueue || []).length} prioritized jobs based on your location and skills.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Interactive Map */}
+            <JobMap
+              jobs={!isOnline && (offlineJobQueue || []).length > 0 ? (offlineJobQueue || []) : jobsToDisplay}
+              userLocation={userLocation}
+              onJobSelect={handleSelectJob}
+              showOptimization={isOnline}
+            />
+
+            {(!isOnline && (offlineJobQueue || []).length > 0 ? (offlineJobQueue || []) : jobsToDisplay).map(job => (
+              <Card key={job.id} className={`cursor-pointer transition-colors ${selectedJob?.id === job.id ? 'ring-2 ring-primary' : ''}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg">{job.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={job.priority === 'high' ? 'destructive' : job.priority === 'medium' ? 'default' : 'secondary'}>
+                        {job.priority}
+                      </Badge>
+                      {!isOnline && 'priorityScore' in job && (
+                        <Badge variant="outline" className="text-xs">
+                          Score: {Math.round((job as any).priorityScore)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPin size={16} />
+                    {job.address}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm mb-3">{job.description}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-muted-foreground" />
+                      <span className="text-sm">{job.estimatedHours}h</span>
+                    </div>
+                    <Button
+                      onClick={() => handleSelectJob(job)}
+                      variant={selectedJob?.id === job.id ? "default" : "outline"}
+                    >
+                      {selectedJob?.id === job.id ? 'Selected' : 'Select Job'}
+                    </Button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {job.skillsRequired.map(skill => (
+                      <Badge key={skill} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Job Details Tab */}
+        <TabsContent value="job-details" className="p-4">
+          {selectedJob && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{selectedJob.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPin size={16} />
+                    {selectedJob.address}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p>{selectedJob.description}</p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <strong>Duration:</strong> {selectedJob.estimatedHours}h
+                    </div>
+                    <div>
+                      <strong>Priority:</strong> {selectedJob.priority}
+                    </div>
+                  </div>
+
+                  <div>
+                    <strong>Required Skills:</strong>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedJob.skillsRequired.map(skill => (
+                        <Badge key={skill} variant="outline">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={handleNavigation} className="flex-1">
+                      <NavigationArrow className="mr-2" />
+                      Get Directions
+                    </Button>
+                    {!checkedIn && (
+                      <Button onClick={handleCheckIn} variant="secondary">
+                        <Camera className="mr-2" />
+                        Check In
+                      </Button>
+                    )}
+                  </div>
+
+                  {checkedIn && checkInData && (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Checked in at {new Date(checkInData.timestamp).toLocaleTimeString()}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* New Command Center Dashboards */}
+
+        {/* AI Orchestration Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="ai-orchestration" className="p-0">
+            <AIOrchestrationDashboard />
+          </TabsContent>
+        )}
+
+        {/* Data Intelligence Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="data-intelligence" className="p-0">
+            <DataIntelligenceDashboard />
+          </TabsContent>
+        )}
+
+        {/* Documents Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="documents" className="p-0">
+            <DocumentDashboard isOfficeMode={false} />
+          </TabsContent>
+        )}
+
+        {/* Team Reporting Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="team-reports" className="p-0">
+            <TeamReportingDashboard />
+          </TabsContent>
+        )}
+
+        {/* Mission Intelligence Hub */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="mission-intel" className="p-0">
+            <MissionIntelligenceHub />
+          </TabsContent>
+        )}
+
+        {/* ARES Configuration Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="ares-config" className="p-0">
+            <ARESConfigurationDashboard />
+          </TabsContent>
+        )}
+
+        {/* AI Team Dashboard - Tab #18 */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="ai-team" className="p-0">
+            <AITeamDashboard />
+          </TabsContent>
+        )}
+
+        {/* Tasks Tab */}
+        <TabsContent value="tasks" className="p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Task Checklist</h2>
+              <Badge variant="outline">
+                {completedTasksCount}/{(tasks || []).length} complete
+              </Badge>
+            </div>
+
+            <Progress value={progressPercentage} className="w-full" />
+
+            <div className="space-y-3">
+              {(tasks || []).map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onComplete={handleTaskComplete}
+                  onGetAIHelp={getAICopilotSuggestion}
+                  onCopilotVision={currentUser?.businessAccount ? handleCopilotVision : undefined}
+                />
+              ))}
+            </div>
+
+            {(tasks || []).length > 0 && (
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={handleJobComplete}
+                  className="flex-1"
+                  disabled={completedTasksCount !== (tasks || []).length}
+                >
+                  <ChatCircle className="mr-2" />
+                  Complete Job
+                </Button>
+                <Button onClick={handleEarlyDeparture} variant="outline">
+                  Request Early Departure
+                </Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Communication Tab */}
+        <TabsContent value="communication" className="p-4">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manager Communication</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <ChatCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Messages will be sent via Slack integration
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  <Button className="w-full justify-start" onClick={handleJobComplete}>
+                    <CheckCircle className="mr-2" />
+                    Send Job Completion Report
+                  </Button>
+
+                  <Button variant="outline" className="w-full justify-start" onClick={handleEarlyDeparture}>
+                    <Warning className="mr-2" />
+                    Request Early Departure
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* AI Copilot Chat Tab */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="copilot" className="p-4">
+            <div className="flex flex-col h-96">
+              <div className="flex items-center gap-2 mb-4">
+                <Robot className="text-primary" />
+                <h2 className="text-xl font-semibold">AI Field Copilot</h2>
+                <Badge variant="secondary">{copilotState.provider}</Badge>
+              </div>
+
+              <ScrollArea className="flex-1 border rounded-md p-4 mb-4">
+                <div className="space-y-4">
+                  {(chatMessages || []).length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Robot size={48} className="mx-auto mb-2 opacity-50" />
+                      <p>Ask me about equipment, procedures, or troubleshooting!</p>
+                      <p className="text-sm mt-1">Use copilot vision to analyze photos of equipment.</p>
+                    </div>
+                  )}
+
+                  {(chatMessages || []).map(message => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] p-3 rounded-lg ${message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                          }`}
+                      >
+                        <div className="whitespace-pre-wrap text-sm">
+                          {message.content}
+                        </div>
+                        {message.photo && (
+                          <img
+                            src={message.photo}
+                            alt="Analysis photo"
+                            className="mt-2 max-w-full rounded border"
+                          />
+                        )}
+                        <div
+                          className={`text-xs mt-1 ${message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                            }`}
+                        >
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ask copilot for help..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleCopilotChat()}
+                  className="flex-1"
+                />
+                <Button onClick={handleCopilotChat} disabled={!chatInput.trim()}>
+                  <PaperPlaneTilt />
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* ARES Chat Interface */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="ares-chat" className="p-4">
+            <SuperAres isOfficeMode={false} />
+          </TabsContent>
+        )}
+
+        {/* ARES Communication Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="ares-comm" className="p-4">
+            <ARESCommunication isOfficeMode={false} />
+          </TabsContent>
+        )}
+
+        {/* ML Insights Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="ml-insights" className="p-4">
+            <MLDashboard
+              jobs={jobsToDisplay}
+              techProfiles={[techProfile]}
+              isVisible={activeTab === 'ml-insights'}
+            />
+          </TabsContent>
+        )}
+
+        {/* Power Platform Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="power-platform" className="p-4">
+            <PowerPlatformDashboard />
+          </TabsContent>
+        )}
+
+        {/* Security Dashboard */}
+        {currentUser?.businessAccount && (
+          <TabsContent value="security" className="p-4">
+            <SecurityDashboard />
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
+  )
+}
+
+function TaskCard({
+  task,
+  onComplete,
+  onGetAIHelp,
+  onCopilotVision
+}: {
+  task: Task
+  onComplete: (taskId: string, photo?: string, notes?: string) => void
+  onGetAIHelp: (task: Task) => void
+  onCopilotVision?: (photo: string) => void
+}) {
+  const [showPhotoDialog, setShowPhotoDialog] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
+  const [notes, setNotes] = useState('')
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const [capturedPhoto, setCapturedPhoto] = useState<string>('')
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      })
+
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.play()
+      }
+      setShowCamera(true)
+    } catch (error) {
+      console.error('Camera access error:', error)
+      toast.error('Camera access denied or not available')
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    setShowCamera(false)
+  }
+
+  const capturePhoto = async () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current
+      const video = videoRef.current
+      const ctx = canvas.getContext('2d')
+
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      ctx?.drawImage(video, 0, 0)
+
+      // Compress the photo
+      const photoDataUrl = canvas.toDataURL('image/jpeg', 0.6) // 60% quality for compression
+      try {
+        const optimizedPhoto = await compressImageForTask(photoDataUrl)
+        setCapturedPhoto(optimizedPhoto)
+      } catch (error) {
+        console.error('Photo compression failed:', error)
+        setCapturedPhoto(photoDataUrl)
+      }
+      stopCamera()
+    }
+  }
+
+  const flipCamera = async () => {
+    stopCamera()
+    const newMode = facingMode === 'user' ? 'environment' : 'user'
+    setFacingMode(newMode)
+    // Small delay to ensure camera is fully stopped
+    setTimeout(() => startCamera(), 100)
+  }
+
+  const retakePhoto = () => {
+    setCapturedPhoto('')
+    startCamera()
+  }
+
+  const handleTaskComplete = (withPhoto: boolean) => {
+    if (withPhoto && capturedPhoto) {
+      onComplete(task.id, capturedPhoto, notes)
+    } else {
+      if (!notes.trim()) {
+        toast.error('Please add notes if no photo is available')
+        return
+      }
+      onComplete(task.id, undefined, notes)
+    }
+    setShowPhotoDialog(false)
+    setCapturedPhoto('')
+    setNotes('')
+    stopCamera()
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      stopCamera()
+      setCapturedPhoto('')
+      setNotes('')
+    }
+    setShowPhotoDialog(open)
+  }
+
+  return (
+    <Card className={task.completed ? 'bg-green-50 border-green-200' : ''}>
+      <CardContent className="pt-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <h3 className="font-medium flex items-center gap-2">
+              {task.completed && <CheckCircle className="text-green-600" size={20} />}
+              {task.title}
+              {task.required && <Badge variant="outline" className="text-xs">Required</Badge>}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+          </div>
+        </div>
+
+        {task.completed ? (
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">
+              Completed at {task.timestamp ? new Date(task.timestamp).toLocaleTimeString() : 'Unknown time'}
+              {task.photo && <Badge variant="secondary" className="ml-2">Photo</Badge>}
+              {task.notes && <Badge variant="secondary" className="ml-2">Notes</Badge>}
+            </div>
+            {task.photo && (
+              <img
+                src={task.photo}
+                alt="Task completion photo"
+                className="w-full h-32 object-cover rounded-md border"
+              />
+            )}
+            {task.notes && (
+              <div className="p-2 bg-muted rounded text-sm">
+                <strong>Notes:</strong> {task.notes}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2 mt-3">
+            <Dialog open={showPhotoDialog} onOpenChange={handleDialogClose}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="flex-1">
+                  <Camera className="mr-1" size={16} />
+                  Complete
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Complete Task: {task.title}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {/* Camera View */}
+                  {showCamera && (
+                    <div className="relative">
+                      <video
+                        ref={videoRef}
+                        className="w-full rounded-md"
+                        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                      />
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                        <Button size="sm" onClick={flipCamera} variant="secondary">
+                          <FlipHorizontal size={16} />
+                        </Button>
+                        <Button size="sm" onClick={capturePhoto}>
+                          <Camera size={16} />
+                        </Button>
+                        <Button size="sm" onClick={stopCamera} variant="destructive">
+                          <X size={16} />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Captured Photo Preview */}
+                  {capturedPhoto && (
+                    <div className="space-y-2">
+                      <img
+                        src={capturedPhoto}
+                        alt="Captured task photo"
+                        className="w-full rounded-md"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={retakePhoto}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Retake Photo
+                      </Button>
+                    </div>
+                  )}
+
+                  <Textarea
+                    placeholder="Add notes (required if no photo)"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                  />
+
+                  {!showCamera && !capturedPhoto && (
+                    <div className="flex gap-2">
+                      <Button onClick={startCamera} className="flex-1">
+                        <Camera className="mr-2" size={16} />
+                        Take Photo
+                      </Button>
+                      <Button
+                        onClick={() => handleTaskComplete(false)}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <FileText className="mr-2" size={16} />
+                        Notes Only
+                      </Button>
+                    </div>
+                  )}
+
+                  {capturedPhoto && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleTaskComplete(true)}
+                        className="flex-1"
+                      >
+                        Complete with Photo
+                      </Button>
+                      {onCopilotVision && (
+                        <Button
+                          onClick={() => onCopilotVision(capturedPhoto)}
+                          variant="outline"
+                        >
+                          <Eye className="mr-1" size={16} />
+                          Vision
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {!capturedPhoto && notes.trim() && (
+                    <Button
+                      onClick={() => handleTaskComplete(false)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Complete with Notes Only
+                    </Button>
+                  )}
+                </div>
+
+                {/* Hidden canvas for photo capture */}
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onGetAIHelp(task)}
+            >
+              AI Help
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+export default App
+
+const compressImageForTask = async (file: string, quality: number = 0.6): Promise<string> =>
+  compressImage(file, quality)

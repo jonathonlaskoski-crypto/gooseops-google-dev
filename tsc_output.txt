@@ -1,0 +1,106 @@
+src/App.tsx(356,9): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'CheckIn'.
+src/App.tsx(388,9): error TS2353: Object literal may only specify known properties, and 'userId' does not exist in type 'CheckIn'.
+src/App.tsx(876,41): error TS2322: Type '(photo: string) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'photo' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'string'.
+src/App.tsx(1134,14): error TS2741: Property 'isOfficeMode' is missing in type '{}' but required in type 'DocumentDashboardProps'.
+src/archive/components/GooseOpsCinematicOverlay.tsx(1,41): error TS2307: Cannot find module 'motion/react' or its corresponding type declarations.
+src/components/AIOrchestrationDashboard.tsx(95,46): error TS2339: Property 'processRequest' does not exist on type 'AIOrchestrationSystem'.
+src/components/JobMap.test.tsx(2,18): error TS2305: Module '"@testing-library/react"' has no exported member 'screen'.
+src/components/JobMap.test.tsx(72,9): error TS2322: Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }[]' is not assignable to type 'Job[]'.
+  Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }' is not assignable to type 'Job'.
+    Types of property 'priority' are incompatible.
+      Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/components/JobMap.test.tsx(84,9): error TS2322: Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }[]' is not assignable to type 'Job[]'.
+  Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }' is not assignable to type 'Job'.
+    Types of property 'priority' are incompatible.
+      Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/components/JobMap.test.tsx(97,9): error TS2322: Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }[]' is not assignable to type 'Job[]'.
+  Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }' is not assignable to type 'Job'.
+    Types of property 'priority' are incompatible.
+      Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/components/JobMap.test.tsx(110,9): error TS2322: Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }[]' is not assignable to type 'Job[]'.
+  Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }' is not assignable to type 'Job'.
+    Types of property 'priority' are incompatible.
+      Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/components/JobMap.test.tsx(124,9): error TS2322: Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }[]' is not assignable to type 'Job[]'.
+  Type '{ id: string; title: string; address: string; lat: number; lng: number; priority: string; estimatedHours: number; skillsRequired: string[]; description: string; }' is not assignable to type 'Job'.
+    Types of property 'priority' are incompatible.
+      Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/components/MobileJobMap.tsx(8,15): error TS2305: Module '"@/lib/optimization"' has no exported member 'OptimizedJob'.
+src/components/MobileJobMap.tsx(55,20): error TS2686: 'L' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/components/MobileJobMap.tsx(62,19): error TS2686: 'L' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/components/MobileJobMap.tsx(69,27): error TS2686: 'L' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/components/MobileJobMap.tsx(282,36): error TS2339: Property 'distanceKm' does not exist on type 'Job'.
+src/components/MobileLayout.tsx(18,3): error TS2305: Module '"@phosphor-icons/react"' has no exported member 'Zap'.
+src/components/PowerPlatformDashboard.tsx(180,23): error TS2322: Type '"destructive" | "success"' is not assignable to type '"default" | "destructive" | "outline" | "secondary" | null | undefined'.
+  Type '"success"' is not assignable to type '"default" | "destructive" | "outline" | "secondary" | null | undefined'.
+src/components/SecurityDashboard.tsx(23,3): error TS2724: '"@phosphor-icons/react"' has no exported member named 'ShieldX'. Did you mean 'Shield'?
+src/components/SecurityDashboard.tsx(132,23): error TS2322: Type '"warning"' is not assignable to type '"default" | "destructive" | "outline" | "secondary" | null | undefined'.
+src/components/SecurityDashboard.tsx(148,23): error TS2322: Type '"success"' is not assignable to type '"default" | "destructive" | "outline" | "secondary" | null | undefined'.
+src/components/SecurityDashboard.tsx(152,23): error TS2322: Type '"warning"' is not assignable to type '"default" | "destructive" | "outline" | "secondary" | null | undefined'.
+src/components/SuperAres.tsx(79,74): error TS2345: Argument of type '{ enableMultiAgent: true; enableLearning: true; enablePerformanceTracking: true; enableVoiceInterface: true; }' is not assignable to parameter of type 'AIOrchestrationConfig'.
+  Type '{ enableMultiAgent: true; enableLearning: true; enablePerformanceTracking: true; enableVoiceInterface: true; }' is missing the following properties from type 'AIOrchestrationConfig': enableRealTimeSync, enableClaudeIntegration, maxResponseTime, minConfidenceThreshold, fallbackStrategy
+src/components/VoiceNavigation.tsx(61,33): error TS2304: Cannot find name 'SpeechRecognition'.
+src/hooks/use-mobile.ts(20,16): error TS2551: Property 'msMaxTouchPoints' does not exist on type 'Navigator'. Did you mean 'maxTouchPoints'?
+src/lib/aiOrchestration.ts(5,24): error TS2307: Cannot find module '@/components/NovaAI' or its corresponding type declarations.
+src/lib/aiOrchestration.ts(8,40): error TS2307: Cannot find module '@/components/PredictiveIntelligence' or its corresponding type declarations.
+src/lib/aiOrchestration.ts(408,41): error TS2551: Property 'generateAgentResponse' does not exist on type 'AIOrchestrationSystem'. Did you mean 'generateBaseResponse'?
+src/lib/authService.ts(1,27): error TS2307: Cannot find module 'jwt-decode' or its corresponding type declarations.
+src/lib/hardwareDetector.ts(61,33): error TS2339: Property 'getParameter' does not exist on type 'RenderingContext'.
+  Property 'getParameter' does not exist on type 'CanvasRenderingContext2D'.
+src/lib/hardwareDetector.ts(210,35): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/lib/hardwareDetector.ts(212,5): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/lib/missionIntelligenceService.ts(66,17): error TS2322: Type '""' is not assignable to type '"excellent" | "good" | "fair" | "poor"'.
+src/lib/missionIntelligenceService.ts(67,17): error TS2322: Type '""' is not assignable to type '"offline" | "active" | "interrupted"'.
+src/lib/moduleSystem.ts(85,108): error TS2339: Property 'LeadGenerationModule' does not exist on type 'typeof import("C:/Users/jonat/OneDrive/6_PERSONAL/Desktop/dev locked downfor team/GooseOps-GoogleDev-Version/src/components/modules/BusinessCoreModules")'.
+src/lib/moduleSystem.ts(97,108): error TS2339: Property 'PowerAutomateModule' does not exist on type 'typeof import("C:/Users/jonat/OneDrive/6_PERSONAL/Desktop/dev locked downfor team/GooseOps-GoogleDev-Version/src/components/modules/BusinessCoreModules")'.
+src/lib/moduleSystem.ts(109,108): error TS2339: Property 'DataFarmingModule' does not exist on type 'typeof import("C:/Users/jonat/OneDrive/6_PERSONAL/Desktop/dev locked downfor team/GooseOps-GoogleDev-Version/src/components/modules/BusinessCoreModules")'.
+src/lib/moduleSystem.ts(121,108): error TS2339: Property 'RFPAutomationModule' does not exist on type 'typeof import("C:/Users/jonat/OneDrive/6_PERSONAL/Desktop/dev locked downfor team/GooseOps-GoogleDev-Version/src/components/modules/BusinessCoreModules")'.
+src/lib/optimization.test.ts(68,46): error TS2345: Argument of type '{ priority: string; id: string; title: string; address: string; lat: number; lng: number; estimatedHours: number; skillsRequired: string[]; description: string; deadline?: string; customerType?: "premium" | "standard" | "basic"; ... 5 more ...; profitMargin?: number; }' is not assignable to parameter of type 'Job'.
+  Types of property 'priority' are incompatible.
+    Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/lib/optimization.test.ts(69,48): error TS2345: Argument of type '{ priority: string; id: string; title: string; address: string; lat: number; lng: number; estimatedHours: number; skillsRequired: string[]; description: string; deadline?: string; customerType?: "premium" | "standard" | "basic"; ... 5 more ...; profitMargin?: number; }' is not assignable to parameter of type 'Job'.
+  Types of property 'priority' are incompatible.
+    Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/lib/optimization.test.ts(70,45): error TS2345: Argument of type '{ priority: string; id: string; title: string; address: string; lat: number; lng: number; estimatedHours: number; skillsRequired: string[]; description: string; deadline?: string; customerType?: "premium" | "standard" | "basic"; ... 5 more ...; profitMargin?: number; }' is not assignable to parameter of type 'Job'.
+  Types of property 'priority' are incompatible.
+    Type 'string' is not assignable to type '"low" | "medium" | "high"'.
+src/lib/securityService.ts(217,66): error TS18048: 'filter.from' is possibly 'undefined'.
+src/lib/securityService.ts(220,66): error TS18048: 'filter.to' is possibly 'undefined'.
+src/lib/voiceInterface.ts(51,24): error TS2304: Cannot find name 'SpeechRecognition'.
+src/lib/voiceInterface.ts(80,45): error TS2339: Property 'SpeechRecognition' does not exist on type '(Window & typeof globalThis & Record<"SpeechRecognition", unknown>) | (Window & typeof globalThis & Record<"webkitSpeechRecognition", unknown>)'.
+  Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis & Record<"webkitSpeechRecognition", unknown>'.
+src/lib/voiceInterface.ts(80,73): error TS2339: Property 'webkitSpeechRecognition' does not exist on type '(Window & typeof globalThis & Record<"SpeechRecognition", unknown>) | (Window & typeof globalThis & Record<"webkitSpeechRecognition", unknown>)'.
+  Property 'webkitSpeechRecognition' does not exist on type 'Window & typeof globalThis & Record<"SpeechRecognition", unknown>'.
+src/lib/voiceInterface.ts(273,37): error TS2552: Cannot find name 'SpeechRecognitionEvent'. Did you mean 'SpeechRecognitionResult'?
+src/lib/voiceInterface.ts(288,36): error TS2552: Cannot find name 'SpeechRecognitionErrorEvent'. Did you mean 'SpeechRecognitionResult'?
+src/systems/backgroundAgents.ts(35,3): error TS2322: Type '{ id: string; role: string; status: string; lastRun: number; intervalMs: number; run: () => Promise<void>; }' is not assignable to type 'Agent'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type '"error" | "idle" | "working"'.
+src/systems/backgroundAgents.ts(46,5): error TS2322: Type 'string' is not assignable to type '"error" | "idle" | "working"'.
+src/systems/backgroundAgents.ts(60,5): error TS2322: Type 'string' is not assignable to type '"error" | "idle" | "working"'.
+src/systems/backgroundAgents.ts(73,3): error TS2322: Type '{ id: string; role: string; status: string; lastRun: number; intervalMs: number; run: () => Promise<void>; }' is not assignable to type 'Agent'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type '"error" | "idle" | "working"'.
+src/systems/backgroundAgents.ts(89,5): error TS2322: Type 'string' is not assignable to type '"error" | "idle" | "working"'.
+src/systems/backgroundAgents.ts(108,5): error TS2322: Type 'string' is not assignable to type '"error" | "idle" | "working"'.
+src/test/setup.ts(4,8): error TS2339: Property 'env' does not exist on type 'Window & typeof globalThis'.
+src/test/setup.ts(12,16): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(17,10): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(21,18): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(22,21): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(23,23): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(24,26): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(25,20): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(30,1): error TS2322: Type 'typeof IntersectionObserver' is not assignable to type '{ new (callback: IntersectionObserverCallback, options?: IntersectionObserverInit | undefined): IntersectionObserver; prototype: IntersectionObserver; }'.
+  Types of property 'prototype' are incompatible.
+    Type 'IntersectionObserver' is missing the following properties from type 'IntersectionObserver': root, rootMargin, thresholds, takeRecords
+src/test/setup.ts(32,10): error TS2339: Property 'callback' does not exist on type 'IntersectionObserver'.
+src/test/setup.ts(74,30): error TS2304: Cannot find name 'vi'.
+src/test/visualRegressionTest.ts(19,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/test/visualRegressionTest.ts(40,5): error TS2322: Type 'ViteDevServer' is not assignable to type 'PreviewServer'.
+  Types of property 'httpServer' are incompatible.
+    Type 'HttpServer | null' is not assignable to type 'HttpServer'.
+      Type 'null' is not assignable to type 'HttpServer'.
+src/test/visualRegressionTest.ts(46,18): error TS2339: Property 'listen' does not exist on type 'PreviewServer'.

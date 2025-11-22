@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"name": "commandops",
+			"path": "."
+		}
+	],
+	"settings": {
+		"window.autoDetectColorScheme": true,
+		"window.closeWhenEmpty": true
+	}
+}

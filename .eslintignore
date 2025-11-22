@@ -1,0 +1,13 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Scripts (ignore Node.js script files that use process/console)
+scripts/
+test-ai-integration.mjs
+
+# Other files to ignore
+.eslintrc.cjs

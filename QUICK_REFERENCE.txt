@@ -1,0 +1,83 @@
+# GooseOps Neural Empire - Quick Reference
+
+## PRODUCT EDITIONS
+- GooseOps Neural Empire - Full-featured enterprise platform for directors and office staff
+- GooseOps Lite (Tech Edition) - Streamlined mobile interface for field technicians
+
+## CORE FEATURES
+- Multi-agent AI orchestration with fallback mechanisms (Azure OpenAI → Claude)
+- Offline-first architecture with background sync
+- Mobile-first design with touch and voice interfaces
+- Role-based access control (Director, FPM, Office Staff, Technician)
+
+## TECH STACK
+- Frontend: React 19 + TypeScript + Tailwind CSS
+- Backend: Supabase (Auth, Database, Storage)
+- AI: Azure OpenAI, Claude (Anthropic)
+- Deployment: Azure Static Web Apps
+
+## QUICK START
+1. Clone repository
+2. npm install
+3. npm run dev
+4. Visit http://localhost:5173
+
+## ENVIRONMENT SETUP
+Create .env with:
+- VITE_AZURE_OPENAI_API_KEY=your-key
+- VITE_AZURE_OPENAI_ENDPOINT=your-endpoint
+- VITE_AZURE_OPENAI_DEPLOYMENT=your-deployment
+- VITE_CLAUDE_API_KEY=your-anthropic-key (optional)
+
+## VOICE COMMANDS (Tech Edition)
+Start with "Goose" followed by:
+- "navigate to [location]" - Start navigation
+- "check in" - Mark arrival at job site
+- "complete task [name]" - Mark task as complete
+- "take photo" - Capture documentation photo
+- "full report" - Generate complete job report
+- "reference [item]" - Pull up documentation
+- "connect office" - Start call with office
+
+## EMERGENCY MODE
+Activated by:
+- Voice command "emergency"
+- Red emergency button
+- Three rapid taps on screen
+
+Provides:
+- Large, simple buttons for critical actions
+- "Get Immediate Help" - Emergency assistance
+- "Exit Directions" - Navigation to exit
+- "Call Supervisor" - Direct supervisor call
+
+## FALLBACK MODES
+1. Standard Voice - Full voice command set
+2. Keyword Mode - Simple keyword detection
+3. Emergency Mode - Critical commands only
+4. Gesture Mode - Tap interface when voice fails
+
+## OFFLINE CAPABILITIES
+- Complete job information available offline
+- Photo capture and storage when offline
+- Task completion tracking
+- Background sync when connectivity returns
+
+## KEY FILES
+- src/App.tsx - Main application component
+- src/components/MobileLayout.tsx - Field tech interface
+- src/lib/voiceInterface.ts - Voice command system
+- src/lib/offlineSync.ts - Offline data management
+- src/lib/aiOrchestration.ts - AI agent coordination
+
+## PERFORMANCE TIPS
+- Enable only needed modules for field use
+- Use light mode on mobile devices
+- Download reference materials on WiFi before field work
+- Clear cache periodically for optimal performance
+
+## SECURITY
+- All AI interactions are logged in audit journal
+- Role-based permissions control feature access
+- Sensitive data is encrypted at rest and in transit
+- Regular security audits and updates

@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PublicClientApplication, AccountInfo } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import {
   retailDispenseMSALConfig,
-  gmailGoogleConfig,
   storageKeys,
 } from '../config/authConfig';
 
@@ -18,13 +16,6 @@ interface AuthContextType {
   loginRetailDispense: () => Promise<void>;
   logoutRetailDispense: () => void;
   isRetailDispenseAuth: boolean;
-
-  // Gmail (Google)
-  gmailUser: any | null;
-  gmailToken: string | null;
-  loginGmail: () => void;
-  logoutGmail: () => void;
-  isGmailAuth: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,10 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // RetailDispense state
   const [retailDispenseUser, setRetailDispenseUser] = useState<AccountInfo | null>(null);
   const [retailDispenseToken, setRetailDispenseToken] = useState<string | null>(null);
-
-  // Gmail state
-  const [gmailUser, setGmailUser] = useState<any | null>(null);
-  const [gmailToken, setGmailToken] = useState<string | null>(null);
 
   // Initialize authentication on mount
   useEffect(() => {
@@ -63,14 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedToken) {
         setRetailDispenseToken(savedToken);
       }
-    }
-
-    // Check for existing Gmail session
-    const savedGmailToken = localStorage.getItem(storageKeys.gmailToken);
-    const savedGmailUser = localStorage.getItem(storageKeys.gmailUser);
-    if (savedGmailToken && savedGmailUser) {
-      setGmailToken(savedGmailToken);
-      setGmailUser(JSON.parse(savedGmailUser));
     }
   };
 
@@ -105,56 +84,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(storageKeys.retailDispenseUser);
   };
 
-  // Gmail (Google) Login
-  const loginGmail = () => {
-    const oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
-
-    const params = new URLSearchParams({
-      client_id: gmailGoogleConfig.clientId,
-      redirect_uri: gmailGoogleConfig.redirectUri,
-      response_type: 'token',
-      scope: gmailGoogleConfig.scopes,
-      access_type: 'offline',
-      prompt: 'consent',
-      include_granted_scopes: 'true',
-    });
-
-    // Open Google OAuth popup
-    const authUrl = `${oauth2Endpoint}?${params.toString()}`;
-    window.location.href = authUrl;
-  };
-
-  // Gmail Logout
-  const logoutGmail = () => {
-    setGmailUser(null);
-    setGmailToken(null);
-    localStorage.removeItem(storageKeys.gmailToken);
-    localStorage.removeItem(storageKeys.gmailUser);
-  };
-
   const value: AuthContextType = {
-    // RetailDispense
     retailDispenseUser,
     retailDispenseToken,
     loginRetailDispense,
     logoutRetailDispense,
     isRetailDispenseAuth: !!retailDispenseToken,
-
-    // Gmail
-    gmailUser,
-    gmailToken,
-    loginGmail,
-    logoutGmail,
-    isGmailAuth: !!gmailToken,
   };
 
   return (
     <MsalProvider instance={msalInstance}>
-      <GoogleOAuthProvider clientId={gmailGoogleConfig.clientId}>
-        <AuthContext.Provider value={value}>
-          {children}
-        </AuthContext.Provider>
-      </GoogleOAuthProvider>
+      <AuthContext.Provider value={value}>
+        {children}
+      </AuthContext.Provider>
     </MsalProvider>
   );
 };

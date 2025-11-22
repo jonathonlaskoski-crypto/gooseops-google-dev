@@ -1,11 +1,8 @@
 /**
- * Unified Authentication Configuration
+ * Authentication Configuration
  *
- * Two separate auth systems:
- * 1. RetailDispense (Microsoft 365 Admin)
- * 2. Gmail (Google Workspace Admin)
- *
- * Both configured for persistent authentication - SIGN IN ONCE!
+ * RetailDispense (Microsoft 365 Admin)
+ * Configured for persistent authentication - SIGN IN ONCE!
  */
 
 import { Configuration, PopupRequest } from '@azure/msal-browser';
@@ -59,35 +56,6 @@ export const retailDispenseLoginRequest: PopupRequest = {
 };
 
 // ============================================
-// GMAIL (Google Workspace Admin Auth)
-// ============================================
-
-export const gmailGoogleConfig = {
-  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GEMINI_API_KEY,
-  /**
-   * Google OAuth scopes for Gmail Admin
-   * https://developers.google.com/identity/protocols/oauth2/scopes
-   */
-  scopes: [
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.compose',
-    'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/drive.file',
-    'openid',
-  ].join(' '),
-  redirectUri: window.location.origin + '/auth/gmail/callback',
-  accessType: 'offline', // CRITICAL: Get refresh token for persistent auth!
-  prompt: 'consent', // Request all permissions upfront
-  include_granted_scopes: true, // Include previously granted scopes
-};
-
-// ============================================
 // API ENDPOINTS
 // ============================================
 
@@ -101,13 +69,6 @@ export const apiEndpoints = {
     files: 'https://graph.microsoft.com/v1.0/me/drive/root/children',
     users: 'https://graph.microsoft.com/v1.0/users',
   },
-  // Google APIs
-  google: {
-    gmail: 'https://gmail.googleapis.com/gmail/v1',
-    calendar: 'https://www.googleapis.com/calendar/v3',
-    drive: 'https://www.googleapis.com/drive/v3',
-    userinfo: 'https://www.googleapis.com/oauth2/v2/userinfo',
-  },
 };
 
 // ============================================
@@ -116,9 +77,7 @@ export const apiEndpoints = {
 
 export const storageKeys = {
   retailDispenseToken: 'retaildispense_msal_token',
-  gmailToken: 'gmail_google_token',
   retailDispenseUser: 'retaildispense_user',
-  gmailUser: 'gmail_user',
 };
 
 // ============================================
@@ -130,14 +89,6 @@ export const storageKeys = {
  */
 export const isRetailDispenseAuthenticated = (): boolean => {
   const token = localStorage.getItem(storageKeys.retailDispenseToken);
-  return !!token;
-};
-
-/**
- * Check if Gmail auth is valid
- */
-export const isGmailAuthenticated = (): boolean => {
-  const token = localStorage.getItem(storageKeys.gmailToken);
   return !!token;
 };
 

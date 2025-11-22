@@ -49,3 +49,5 @@ android/
 ios/
 .capacitor/
 capacitor.config.ts
+
+.vercel

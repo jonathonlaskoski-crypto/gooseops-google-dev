@@ -70,6 +70,7 @@ import {
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { AgentStatusPanel } from '@/components/AgentStatusPanel'
+import { AuthButtons } from '@/components/AuthButtons'
 
 import { type Job, type TechProfile, optimizeRoute, calculateJobPriority } from '@/lib/optimization'
 import { LLMCapability, llmClient } from '@/lib/llmClient'
@@ -1190,6 +1191,9 @@ Provide concise, actionable advice focused on field service work.`
   // All the bells and whistles!
   return (
     <div className="min-h-screen bg-background" data-theme="contrast">
+      {/* Authentication Panel */}
+      <AuthButtons />
+
       {/* Status Bar */}
       <div className="bg-card border-b p-2 flex items-center justify-between">
         <div className="flex items-center">

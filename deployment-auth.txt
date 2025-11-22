@@ -1,0 +1,93 @@
+Vercel CLI 48.10.10
+Retrieving project…
+Deploying jonathonlaskoski-4037s-projects/gooseops-google-dev
+Uploading [--------------------] (0.0B/530.1KB)
+Uploading [=====---------------] (137.4KB/530.1KB)
+Uploading [==========----------] (265.4KB/530.1KB)
+Uploading [===============-----] (409.4KB/530.1KB)
+Uploading [====================] (530.1KB/530.1KB)
+Inspect: https://vercel.com/jonathonlaskoski-4037s-projects/gooseops-google-dev/Dd1VomqH8evxj73qkN2B6LyuSRrd [3s]
+Production: https://gooseops-google-m37pwjfgb-jonathonlaskoski-4037s-projects.vercel.app [3s]
+https://gooseops-google-m37pwjfgb-jonathonlaskoski-4037s-projects.vercel.appQueued...
+Queued...
+Building: Running build in Portland, USA (West) – pdx1
+Building: Build machine configuration: 4 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 325 deployment files...
+Building: Restored build cache from previous deployment (B5L8dX9xT1Yb3M769FJMtSqNupu9)
+Building: Running "vercel build"
+Building: Vercel CLI 48.10.5
+Building: Running "install" command: `npm install --legacy-peer-deps`...
+Building: added 5 packages, and audited 748 packages in 3s
+Building: 176 packages are looking for funding
+Building: run `npm fund` for details
+Building: 2 moderate severity vulnerabilities
+Building: To address all issues, run:
+Building: npm audit fix
+Building: Run `npm audit` for details.
+Building: > spark-template@0.0.0 build
+Building: > tsc -b --noCheck && vite build
+Building: [icon-proxy] Checking for exports in directory: /vercel/path0/node_modules/@phosphor-icons/react
+Building: [icon-proxy] Found package file: /vercel/path0/node_modules/@phosphor-icons/react/dist/index.d.ts
+Building: [icon-proxy] Loaded 1514 exports from /vercel/path0/node_modules/@phosphor-icons/react/dist/index.d.ts
+Building: [icon-proxy] Checking for exports in directory: /vercel/path0/node_modules/@phosphor-icons/react
+Building: [icon-proxy] Found package file: /vercel/path0/node_modules/@phosphor-icons/react/dist/index.d.ts
+Building: [icon-proxy] Loaded 1514 exports from /vercel/path0/node_modules/@phosphor-icons/react/dist/index.d.ts
+Building: vite v7.2.2 building client environment for production...
+Building: transforming...
+Building: Found 3 warnings while optimizing generated CSS:
+Building: Issue #1:
+Building: │   .container {
+Building: │     width: 100%;
+Building: │     @media (width >= (display-mode: standalone)) {
+Building: ┆                     ^-- Unexpected token ParenthesisBlock
+Building: ┆
+Building: │       max-width: (display-mode: standalone);
+Building: │     }
+Building: Issue #2:
+Building: │       max-width: (display-mode: standalone);
+Building: │     }
+Building: │     @media (width >= (pointer: coarse)) {
+Building: ┆                     ^-- Unexpected token ParenthesisBlock
+Building: ┆
+Building: │       max-width: (pointer: coarse);
+Building: │     }
+Building: Issue #3:
+Building: │       max-width: (pointer: coarse);
+Building: │     }
+Building: │     @media (width >= (pointer: fine)) {
+Building: ┆                     ^-- Unexpected token ParenthesisBlock
+Building: ┆
+Building: │       max-width: (pointer: fine);
+Building: │     }
+Building: ✓ 6493 modules transformed.
+Building: rendering chunks...
+Building: [plugin vite:reporter]
+Building: (!) /vercel/path0/src/lib/claudeService.ts is dynamically imported by /vercel/path0/src/lib/aiOrchestration.ts but also statically imported by /vercel/path0/src/lib/llmClient.ts, dynamic import will not move module into another chunk.
+Building: Emitted proxy files to build output
+Building: computing gzip size...
+Building: dist/package.json                   0.26 kB │ gzip:   0.18 kB
+Building: dist/index.html                     0.75 kB │ gzip:   0.42 kB
+Building: dist/proxy.js                   1,422.57 kB
+Building: dist/assets/index-glfMRYUf.css    485.29 kB │ gzip:  81.57 kB
+Building: dist/assets/web-vDxOvuKo.js         0.36 kB │ gzip:   0.25 kB
+Building: dist/assets/web-ksM_Mv6f.js         0.60 kB │ gzip:   0.19 kB
+Building: dist/assets/web-C081L10m.js         0.76 kB │ gzip:   0.36 kB
+Building: dist/assets/web-6avHB8kt.js         1.25 kB │ gzip:   0.59 kB
+Building: dist/assets/web-DxHVvlc0.js         2.44 kB │ gzip:   1.09 kB
+Building: dist/assets/web-B1ujWw5O.js         3.43 kB │ gzip:   1.09 kB
+Building: dist/assets/web-CcVynTqQ.js         8.69 kB │ gzip:   2.96 kB
+Building: dist/assets/index-D054jRgO.js   1,959.14 kB │ gzip: 455.61 kB
+Building: (!) Some chunks are larger than 500 kB after minification. Consider:
+Building: - Using dynamic import() to code-split the application
+Building: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+Building: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Building: ✓ built in 9.07s
+Building: Build Completed in /vercel/output [17s]
+Building: Deploying outputs...
+[2K[1A[2K[GProduction: https://gooseops-google-m37pwjfgb-jonathonlaskoski-4037s-projects.vercel.app [29s]
+Completing...
+
+Common next commands:
+- `vercel inspect gooseops-google-m37pwjfgb-jonathonlaskoski-4037s-projects.vercel.app --logs`
+- `vercel redeploy gooseops-google-m37pwjfgb-jonathonlaskoski-4037s-projects.vercel.app`

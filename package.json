@@ -19,7 +19,7 @@
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
-        "@anthropic-ai/sdk": "^0.67.0",
+        "@anthropic-ai/sdk": "^0.70.1",
         "@azure/msal-browser": "^4.26.2",
         "@azure/msal-react": "^3.0.22",
         "@capacitor-community/contacts": "^7.0.0",
